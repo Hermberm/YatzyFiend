@@ -1,0 +1,8 @@
+Sounds: Kenney.nl (Kenney Vleugels), license CC0 1.0 (public domain).
+  - Casino Audio 1.1 (dice throws, dice grabs)
+  - Interface Sounds 1.0 (your turn, invitation)
+  - Music Jingles (Yatzy fanfare)
+https://kenney.nl  -  volume lowered and re-encoded for the addon (tools\convert-sounds.ps1).
+
+Yatzy.ogg (the "Yatzy!" shout) is a voice recording by a friend of the author, used with
+permission for this addon. It is NOT CC0; don't reuse it elsewhere.

@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Yatzy – UI prototype</title>
+<!-- Display font for the prototype; falls back to Georgia small caps offline -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap">
+<style>
+  :root {
+    --gold: #c9a13b;
+    --gold-light: #f5d77a;
+    --gold-dim: #8a6a2c;
+    --wood-dark: #1d140c;
+    --text: #f0e6cc;
+    --muted: #b5a684;
+    --red: #8b1a10;
+    --red-dark: #5a0f08;
+    --paper: #f1e6c8;
+    --ink: #1f3a7a;
+    --graphite: #3a342c;
+    --hand: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(80, 110, 60, .55), transparent 60%),
+      radial-gradient(ellipse at 75% 70%, rgba(40, 70, 90, .5), transparent 55%),
+      linear-gradient(160deg, #2b3a24, #1a2418 60%, #121a14);
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--text);
+    overflow: hidden;
+    user-select: none;
+  }
+  button { font-family: inherit; }
+  .hidden { display: none !important; }
+
+  /* ---------- Fake minimap ---------- */
+  #minimap {
+    position: absolute; top: 20px; right: 24px; width: 150px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #6f8a4e, #3f5a2e 60%, #2a3d20);
+    border: 3px solid #5a4a2a; box-shadow: 0 0 0 2px #1a1208, 0 6px 18px rgba(0,0,0,.6);
+  }
+  #minimap::after { content: "Minimap"; position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.35); font-size: 12px; letter-spacing: 1px; }
+  #mmButton {
+    position: absolute; left: 4px; top: 112px; width: 34px; height: 34px; border-radius: 50%;
+    background: radial-gradient(circle, #2a2a2a, #0d0d0d); border: 2px solid var(--gold);
+    color: var(--gold-light); font-size: 18px; cursor: pointer; display: grid; place-items: center; z-index: 2; padding: 0;
+  }
+  #mmButton:hover { box-shadow: 0 0 8px 2px rgba(245,215,122,.6); }
+  #mmButton.flash { animation: mmflash 1s ease-in-out infinite; }
+  @keyframes mmflash { 50% { box-shadow: 0 0 14px 6px rgba(255,220,90,.95); background: radial-gradient(circle, #6a5320, #1d1608); } }
+
+  /* ---------- Window (resizable; content keeps its size) ---------- */
+  #win {
+    position: absolute; width: 780px; height: 460px;
+    background: var(--wood-dark); border: 2px solid var(--gold-dim); border-radius: 8px;
+    box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0,0,0,.7);
+    overflow: hidden;
+  }
+  .titlebar {
+    height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 6px;
+    background: linear-gradient(#4a3420, #2a1c10); border-bottom: 1px solid var(--gold-dim); cursor: move;
+  }
+  .titlebar .title { flex: 1; text-align: center; color: var(--gold-light); font-weight: bold; letter-spacing: 2px; text-shadow: 0 1px 2px #000; }
+  .iconbtn {
+    width: 26px; height: 26px; border: 1px solid var(--gold-dim); background: #2a1c10; color: var(--gold-light);
+    border-radius: 4px; cursor: pointer; display: grid; place-items: center; font-size: 14px; padding: 0;
+  }
+  .iconbtn:hover { border-color: var(--gold-light); background: #3a2814; }
+  .iconbtn.placeholder { visibility: hidden; }
+  .body { position: absolute; top: 36px; left: 0; right: 0; bottom: 0; overflow-x: hidden; overflow-y: auto; }   /* never scroll sideways */
+  .body::-webkit-scrollbar { width: 10px; height: 10px; }
+  .body::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 5px; }
+  .body::-webkit-scrollbar-track { background: #120c06; }
+  /* Resize handles on the window edges */
+  .rz { position: absolute; z-index: 60; }
+  .rz.l { left: -2px; top: 36px; bottom: 10px; width: 8px; cursor: ew-resize; }
+  .rz.r { right: -2px; top: 36px; bottom: 10px; width: 8px; cursor: ew-resize; }
+  .rz.b { left: 10px; right: 10px; bottom: -2px; height: 8px; cursor: ns-resize; }
+  .rz.bl { left: -2px; bottom: -2px; width: 14px; height: 14px; cursor: nesw-resize; }
+  .rz.br { right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, var(--gold-dim) 50% 56%, transparent 56% 66%, var(--gold-dim) 66% 72%, transparent 72% 82%, var(--gold-dim) 82% 88%, transparent 88%); }
+  .rz.l:hover, .rz.r:hover, .rz.b:hover { background: rgba(245,215,122,.3); }
+  .rz.br:hover { filter: brightness(1.6); }
+
+  .btn {
+    background: linear-gradient(#a52416, var(--red) 50%, var(--red-dark)); border: 1px solid var(--gold);
+    color: var(--gold-light); padding: 9px 14px; border-radius: 5px; cursor: pointer; font-weight: bold;
+    font-size: 14px; text-shadow: 0 1px 1px #000; box-shadow: 0 2px 4px rgba(0,0,0,.5);
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.2); }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { filter: grayscale(.9) brightness(.6); cursor: default; }
+  .btn.secondary { background: linear-gradient(#4a3420, #2a1c10); }
+
+  .screen { position: absolute; inset: 0; }
+
+  /* ---------- Start screen ---------- */
+  #startScreen { display: grid; grid-template-columns: minmax(150px, 290px) minmax(200px, 1fr); gap: 18px; padding: 20px;
+    min-height: 280px;
+    background: radial-gradient(ellipse at 20% 30%, #3a2814, var(--wood-dark) 70%); }
+  .startLeft { display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+  .logo { text-align: center; font-size: clamp(34px, 6vw, 52px); color: var(--gold-light); font-weight: bold; letter-spacing: 5px;
+    text-shadow: 0 2px 0 #6a4a14, 0 4px 10px #000; margin-bottom: 8px; }
+  .startLeft .btn { padding: 12px; font-size: 16px; }
+  .startRight { display: flex; flex-direction: column; min-height: 0; }
+  h3 { margin: 4px 0 8px; color: var(--gold); font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+  .gameList { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+  .startRight .gameList { flex: 1; }
+  .gameRow {
+    background: rgba(0,0,0,.3); border: 1px solid #4a3a20; border-radius: 5px; padding: 8px 10px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .gameRow:hover { border-color: var(--gold); background: rgba(80,60,20,.3); }
+  .gameRow.current { border-color: var(--gold-light); }
+  .gameRow .names { font-size: 14px; }
+  .gameRow .meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+  .badge { color: #1d140c; background: var(--gold-light); border-radius: 3px; padding: 0 5px; font-weight: bold; font-size: 11px; }
+  .emptyNote { color: var(--muted); font-size: 13px; font-style: italic; }
+
+  /* ---------- Game screen ---------- */
+  /* The game keeps a minimum size; if the window is smaller, the window body scrolls. */
+  #gameScreen { overflow: hidden; min-width: 420px; min-height: 320px; }
+  #gameScreen.sheetOpen { min-width: 710px; }
+  /* Narrow window: the sheet is folded in automatically; if you open it, it slides OVER the table. */
+  #gameScreen.narrow.sheetOpen { min-width: 420px; }
+  #gameScreen.narrow.sheetOpen #table { right: 0; }
+  #gameScreen.narrow.sheetOpen #celebrate { right: 0; }
+  #gameScreen.narrow #sheet { box-shadow: -10px 0 24px rgba(0,0,0,.6); }
+  #table {
+    position: absolute; left: 0; top: 0; bottom: 0; right: 0;
+    transition: right .35s cubic-bezier(.2,.85,.25,1);
+    background:
+      radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,.55) 100%),
+      repeating-linear-gradient(92deg, rgba(0,0,0,.08) 0 2px, transparent 2px 23px),
+      repeating-linear-gradient(88deg, rgba(255,255,255,.03) 0 1px, transparent 1px 41px),
+      linear-gradient(#5b3a20, #4a2e18);
+  }
+  #gameScreen.sheetOpen #table { right: 290px; }
+  #status {
+    position: absolute; top: 8px; left: 10px; right: 10px; height: 28px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--text); background: rgba(0,0,0,.45); border-radius: 14px; text-shadow: 0 1px 1px #000;
+  }
+  #status b { color: var(--gold-light); }
+  #tray {
+    position: absolute; right: 12px; bottom: 12px; width: 262px; height: 70px; border-radius: 12px;
+    background: radial-gradient(ellipse at center, #2c1a0c, #1a0f06); border: 2px solid var(--gold-dim);
+    box-shadow: inset 0 3px 8px rgba(0,0,0,.8);
+  }
+  #tray::before { content: "Saved"; position: absolute; top: -17px; right: 6px; font-size: 11px; color: var(--muted); }
+  #rollBtn { position: absolute; left: 12px; bottom: 18px; width: clamp(110px, calc(100% - 300px), 170px); height: 56px; font-size: 15px; }
+
+  .die { position: absolute; left: 0; top: 0; width: 64px; height: 64px; z-index: 5; cursor: pointer;
+    transition: transform .38s cubic-bezier(.2,.85,.25,1), opacity .3s; }
+  .die.rolling { transition: none; }
+  .die.idle { opacity: .55; cursor: default; }
+  .die.locked { cursor: default; }
+  .die .shadow { position: absolute; inset: 5px; border-radius: 13px; background: rgba(0,0,0,.5); filter: blur(5px); transform: translate(4px, 5px); }
+  .die .face {
+    position: absolute; inset: 0; border-radius: 12px; padding: 10px;
+    background: radial-gradient(circle at 30% 25%, #fffaf0, #eadcbe 60%, #c4ad80);
+    box-shadow: inset 0 -4px 5px rgba(0,0,0,.25), inset 0 1px 0 #fff;
+    display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  }
+  .pip { width: 12px; height: 12px; border-radius: 50%; place-self: center; visibility: hidden;
+    background: radial-gradient(circle at 35% 35%, #c0392b, #5e0b05); }
+  .pip.on { visibility: visible; }
+  .die.saved .face { box-shadow: 0 0 0 3px var(--gold-light), 0 0 12px 3px rgba(245,215,122,.6), inset 0 -4px 5px rgba(0,0,0,.25); }
+  .die:not(.idle):not(.locked):hover .face { filter: brightness(1.08); }
+  .die.glow .face { animation: dieglow .5s ease-in-out 6 alternate; }
+  @keyframes dieglow { to { box-shadow: 0 0 0 3px #ffe58a, 0 0 26px 10px rgba(255,210,80,.95); } }
+
+  /* ---------- Paper score sheet (right side, folds in) ---------- */
+  #sheet {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 290px; z-index: 8;
+    transform: translateX(100%); transition: transform .35s cubic-bezier(.2,.85,.25,1);
+    background: linear-gradient(90deg, #2a1c10, #3a2816);
+  }
+  #gameScreen.sheetOpen #sheet { transform: translateX(0); }
+  #foldTab {
+    position: absolute; left: -26px; top: 50%; margin-top: -60px; width: 26px; height: 120px;
+    background: linear-gradient(90deg, #4a3420, #2a1c10); border: 1px solid var(--gold); border-right: none;
+    border-radius: 8px 0 0 8px; color: var(--gold-light); cursor: pointer; padding: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 11px; letter-spacing: 1px;
+    box-shadow: -3px 0 8px rgba(0,0,0,.4);
+  }
+  #foldTab:hover { filter: brightness(1.25); }
+  #foldTab .vert { writing-mode: vertical-rl; transform: rotate(180deg); }
+  #foldTab.pulse { animation: tabpulse 1s ease-in-out infinite; }
+  @keyframes tabpulse { 50% { box-shadow: -3px 0 14px 4px rgba(245,215,122,.8); } }
+  .paper {
+    position: absolute; inset: 8px 10px 10px 8px; padding: 8px 10px 6px;
+    transform: rotate(.7deg);
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,.35), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(150,110,50,.18), transparent 50%),
+      var(--paper);
+    color: var(--graphite);
+    box-shadow: 0 6px 14px rgba(0,0,0,.55), inset 0 0 30px rgba(140,100,40,.25);
+    border-radius: 2px;
+    overflow-y: auto;   /* if the window is too short for the whole sheet, the sheet scrolls */
+    scrollbar-width: thin; scrollbar-color: rgba(120,90,50,.6) transparent;
+  }
+  .paper::before { /* tape strip */
+    content: ""; position: absolute; top: -9px; left: 50%; width: 70px; height: 20px; margin-left: -35px;
+    background: rgba(230,220,180,.75); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .paperTitle { text-align: center; font-weight: bold; color: #9b2316; letter-spacing: 4px; font-size: 15px; margin-bottom: 2px; }
+  .paper table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  .paper th, .paper td { height: 18.5px; line-height: 17px; padding: 0 3px; border-bottom: 1px solid rgba(70,100,160,.28); text-align: center; white-space: nowrap; overflow: hidden; }
+  .paper td + td, .paper th + th { border-left: 1px solid rgba(155,35,22,.35); }
+  .paper th { font-family: var(--hand); font-weight: normal; font-size: 12px; color: var(--graphite); }
+  .paper th:first-child, .paper td:first-child { text-align: left; width: 104px; color: #4a3e30; }
+  .paper th.active { text-decoration: underline wavy rgba(155,35,22,.7); }
+  .paper .me { background: linear-gradient(180deg, rgba(255,226,70,.32), rgba(255,215,40,.42)); }
+  .paper td.val { font-family: var(--hand); font-size: 13px; color: var(--graphite); }
+  .paper td.val.me { color: var(--ink); }
+  /* Empty cells you can write in: nothing shows until you hover a cell. */
+  .paper td { position: relative; }
+  .paper td.pick { font-family: var(--hand); cursor: pointer; }
+  .paper td.pick .pv { visibility: hidden; color: var(--ink); font-size: 13px; }
+  .paper td.pick:hover { background: rgba(255,226,70,.85); }
+  .paper td.pick:hover .pv { visibility: visible; }
+  /* A struck-out field: a hand-drawn pen line through the cell. */
+  .strike::after {
+    content: ""; position: absolute; left: 12%; right: 12%; top: 50%; height: 2px; margin-top: -1px;
+    background: var(--ink); border-radius: 2px; transform: rotate(-9deg); opacity: .85;
+  }
+  .paper td.val.strike:not(.me)::after { background: var(--graphite); }
+  .paper td.pick.zero::after { visibility: hidden; opacity: .55; }
+  .paper td.pick.zero:hover::after { visibility: visible; }
+  .paper td.strike.ink::after { animation: strikeIn .45s ease-out; }
+  @keyframes strikeIn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  .paper tr.sum td { font-size: 11px; color: #7a2a1a; border-bottom: 2px solid rgba(155,35,22,.45); }
+  .paper tr.sum td.val { font-size: 12px; }
+  .paper tr.total td { font-weight: bold; border-top: 2px solid rgba(155,35,22,.6); border-bottom: 3px double rgba(155,35,22,.6); }
+  .paper tr.total td.val { font-size: 14px; }
+  .paper td.ink { animation: write .7s ease-out; }
+  @keyframes write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+  /* ---------- Side menu ---------- */
+  #menuBackdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #menuBackdrop.open { opacity: 1; pointer-events: auto; }
+  #sideMenu {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 270px; z-index: 31;
+    background: linear-gradient(90deg, #2a1d12, #20160d); border-right: 2px solid var(--gold);
+    box-shadow: 6px 0 18px rgba(0,0,0,.6); transform: translateX(-105%); transition: transform .3s cubic-bezier(.2,.85,.25,1);
+    display: flex; flex-direction: column; padding: 10px; gap: 8px;
+  }
+  #sideMenu.open { transform: translateX(0); }
+  .menuHeader { display: flex; align-items: center; justify-content: space-between; }
+  .menuHeader span { color: var(--gold-light); font-weight: bold; letter-spacing: 1px; }
+  #sideMenu .gameList { flex: 1; }
+  .linkBtn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; text-align: left; padding: 4px 0; }
+  .linkBtn:hover { color: var(--gold-light); }
+
+  /* ---------- Modals ---------- */
+  .modalBack { position: absolute; inset: 0; background: rgba(0,0,0,.6); z-index: 40; display: grid; place-items: center; }
+  .modal { width: 340px; background: #2a1d12; border: 2px solid var(--gold); border-radius: 8px; padding: 14px; box-shadow: 0 10px 30px #000; }
+  .modal h2 { margin: 0 0 10px; font-size: 18px; color: var(--gold-light); }
+  .modal .choice { display: flex; flex-direction: column; gap: 8px; }
+  .roster label { display: flex; align-items: center; gap: 8px; padding: 3px 2px; font-size: 14px; cursor: pointer; }
+  .roster .online { color: #7ad36a; font-size: 11px; }
+  .roster .offline { color: #888; font-size: 11px; }
+  .modal .row { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+  .modal input[type=text] { flex: 1; background: #120c06; border: 1px solid var(--gold-dim); color: var(--text); padding: 7px; border-radius: 4px; font-family: inherit; }
+  .openGame { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #4a3a20; font-size: 14px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- Celebration & overlays ---------- */
+  #celebrate { position: absolute; left: 0; top: 0; bottom: 0; right: 0; z-index: 25; pointer-events: none; display: none; place-items: center; }
+  #gameScreen.sheetOpen #celebrate { right: 290px; }
+  #celebrate.show { display: grid; }
+  #celebrate .rays { position: absolute; width: 560px; height: 560px; left: 50%; top: 50%; margin: -280px 0 0 -280px; border-radius: 50%;
+    background: repeating-conic-gradient(rgba(255,215,100,.28) 0 8deg, transparent 8deg 22deg);
+    mask: radial-gradient(circle, #000 15%, transparent 65%); -webkit-mask: radial-gradient(circle, #000 15%, transparent 65%);
+    animation: spin 6s linear infinite, fade 2.8s ease-out forwards; }
+  #celebrate .inner { text-align: center; animation: pop 2.8s ease-out forwards; }
+  #celebrate .big { font-size: 84px; font-weight: bold; color: #ffe58a; letter-spacing: 5px;
+    text-shadow: 0 3px 0 #a0701a, 0 6px 0 #5a3a08, 0 0 30px rgba(255,200,60,.9), 0 10px 20px #000; }
+  #celebrate .sub { font-size: 20px; color: var(--text); text-shadow: 0 2px 4px #000; margin-top: 4px; }
+  @keyframes pop { 0% { transform: scale(.2); opacity: 0; } 14% { transform: scale(1.18); opacity: 1; } 24% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: scale(1.06); opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fade { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+  #gameOver { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.65); display: grid; place-items: center; }
+  #gameOver .modal { text-align: center; width: 300px; }
+  #gameOver ol { text-align: left; margin: 8px auto 14px; padding-left: 24px; width: 200px; font-size: 15px; }
+
+  #raidWarning { position: fixed; top: 16%; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: bold; color: #ffd84a;
+    text-shadow: 0 2px 2px #000, 0 0 12px rgba(0,0,0,.8); pointer-events: none; opacity: 0; z-index: 100; }
+  #raidWarning.show { animation: rw 3s ease-out forwards; }
+  @keyframes rw { 0% { opacity: 0; transform: scale(1.4); } 10% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* ---------- Prototype controls ---------- */
+  #devbar { position: fixed; right: 14px; bottom: 14px; background: rgba(0,0,0,.6); border: 1px dashed #777; border-radius: 6px;
+    padding: 8px 12px; font: 12px system-ui, sans-serif; color: #ccc; display: flex; flex-direction: column; gap: 6px; max-width: 310px; z-index: 200; }
+  #devbar b { color: #fff; }
+  #devbar label { display: flex; align-items: center; gap: 6px; }
+  #devbar button { font: 12px system-ui, sans-serif; cursor: pointer; }
+  #devbar .presets { display: flex; gap: 4px; }
+
+  /* =====================================================================
+     STYLE PASS: ornate dark-fantasy / gothic look, brown palette.
+     Metal trim = aged bronze/iron bevels, ruby-red gem buttons with
+     diamond end caps, small-caps display type, filigree corners.
+     All drawn in CSS/SVG here; real addon art comes from the art spec.
+     ===================================================================== */
+  :root {
+    --display: "Cinzel", "Trajan Pro", Georgia, serif;
+    /* Toned-down metal: softer contrast, fewer highlights */
+    --metal: linear-gradient(180deg, #b39a6c 0%, #7d6544 45%, #4e3d28 60%, #9a8158 100%);
+    --metal-diag: linear-gradient(135deg, #b8a070 0%, #7a6242 45%, #4a3a26 65%, #a08860 100%);
+    --panel: #170f09;
+    --panel-tex:
+      repeating-linear-gradient(45deg, rgba(255,220,160,.025) 0 1px, transparent 1px 14px),
+      repeating-linear-gradient(-45deg, rgba(255,220,160,.025) 0 1px, transparent 1px 14px),
+      radial-gradient(ellipse at 50% 0%, rgba(120,70,30,.25), transparent 70%),
+      #170f09;
+    --ruby: linear-gradient(180deg, #a8301f 0%, #8a1d10 50%, #6c140a 100%);
+  }
+
+  /* Window: bevelled bronze band + filigree corners */
+  #win {
+    border: 5px solid transparent; border-radius: 10px; overflow: visible;
+    background: linear-gradient(var(--wood-dark), var(--wood-dark)) padding-box, var(--metal-diag) border-box;
+    box-shadow: 0 0 0 1px #070403, inset 0 0 0 1px #070403, 0 18px 50px rgba(0,0,0,.8);
+  }
+  .body { border-radius: 0 0 5px 5px; }
+  /* Simple corner fittings: a plain L-shaped metal bracket with one rivet. No scrolls or gems. */
+  .orn {
+    position: absolute; width: 26px; height: 26px; z-index: 70; pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M1 25V5Q1 1 5 1H25V8H8V25Z' fill='%23806848' stroke='%23140c05' stroke-width='1'/%3E%3Cpath d='M2.5 23V5.5Q2.5 2.5 5.5 2.5H23' fill='none' stroke='%23b39a6c' stroke-width='1' opacity='.7'/%3E%3Ccircle cx='5' cy='5' r='1.6' fill='%23c2aa7a' stroke='%23140c05' stroke-width='.6'/%3E%3C/svg%3E") no-repeat center / contain;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.6));
+  }
+  .orn.tl { top: -4px; left: -4px; }
+  .orn.tr { top: -4px; right: -4px; transform: scaleX(-1); }
+  .orn.bl { bottom: -4px; left: -4px; transform: scaleY(-1); }
+  .orn.br { bottom: -4px; right: -4px; transform: scale(-1, -1); }
+
+  /* Title bar: dark band with a thin metal rule and a ruby name plaque */
+  .titlebar {
+    border-radius: 5px 5px 0 0; border-bottom: 2px solid #070403; position: relative; padding: 0 22px;   /* keep buttons clear of the corner fittings */
+    background:
+      linear-gradient(transparent 17px, rgba(205,170,100,.55) 17px 18px, transparent 18px),
+      linear-gradient(#2c1e12, #120b06);
+  }
+  .titlebar .title {
+    position: absolute; left: 50%; top: 4px; transform: translateX(-50%); flex: none;
+    height: 26px; padding: 0 30px; display: flex; align-items: center;
+    font: 700 14px var(--display); letter-spacing: 4px; color: #f6e6bb; text-shadow: 0 1px 2px #000;
+    background: var(--metal);
+    clip-path: polygon(13px 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 13px 100%, 0 50%);
+  }
+  .titlebar .title::before {
+    content: ""; position: absolute; inset: 2px; z-index: -1; background: var(--ruby);
+    clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+  }
+  .titlebar .title { isolation: isolate; }
+  .titlebar .spacer { flex: 1; }
+
+  /* Small square icon buttons in a metal frame */
+  .iconbtn {
+    border: 2px solid transparent; border-radius: 3px; position: relative; z-index: 1;
+    background: radial-gradient(circle at 50% 35%, #3a2a1a, #120b06) padding-box, var(--metal) border-box;
+    box-shadow: 0 2px 3px rgba(0,0,0,.6);
+  }
+  .iconbtn:hover { background: radial-gradient(circle at 50% 35%, #5a3a1c, #1a0f06) padding-box, var(--metal) border-box; }
+
+  /* Ruby gem buttons with metal frame and diamond end caps */
+  .btn {
+    position: relative; border: 2px solid transparent; border-radius: 4px;
+    background: var(--ruby) padding-box, var(--metal) border-box;
+    font-family: var(--display); font-weight: 700; font-variant: small-caps; letter-spacing: 1.5px;
+    color: #f8e9c3; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,.6);
+    box-shadow: inset 0 1px 0 rgba(255,200,170,.18), 0 2px 4px rgba(0,0,0,.55);
+    padding: 9px 20px;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.12); }
+  .btn.secondary { background: linear-gradient(#3e2c1b, #24170c 50%, #1a1008) padding-box, var(--metal) border-box; }
+
+  /* Display type */
+  .logo {
+    font-family: var(--display); font-weight: 700; letter-spacing: 6px;
+    background: linear-gradient(180deg, #fff2c8 0%, #d9b96a 45%, #8a6630 55%, #e6cc88 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: none; filter: drop-shadow(0 3px 0 #2a1a08) drop-shadow(0 6px 10px #000);
+  }
+  h3, .menuHeader span, .modal h2 {
+    font-family: var(--display); font-variant: small-caps; letter-spacing: 2px; color: #e9d29a; text-transform: none;
+  }
+  h3 { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  h3::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(205,170,100,.7), transparent); }
+
+  /* Panels */
+  #startScreen, #sideMenu { background: var(--panel-tex); }
+  #sideMenu { border-right: 5px solid transparent; background: var(--panel-tex) padding-box, var(--metal) border-box; }
+  .gameRow {
+    background: linear-gradient(#21160d, #140c06); border: 1px solid #6a5434; border-radius: 3px;
+    box-shadow: inset 0 0 0 1px #070403, inset 0 0 12px rgba(0,0,0,.6);
+  }
+  .gameRow:hover { border-color: #d9c48f; background: linear-gradient(#2e1e10, #180e06); box-shadow: inset 0 0 0 1px #070403, 0 0 8px rgba(217,180,100,.35); }
+  .gameRow.current { border-color: #e6cc88; }
+  .gameRow .names { font-family: var(--display); font-size: 13.5px; letter-spacing: .5px; color: #f0e2c0; }
+  .badge { background: var(--ruby); color: #f8e9c3; border: 1px solid #d9b96a; font-family: var(--display); letter-spacing: 1px; }
+  .modal {
+    border: 4px solid transparent; border-radius: 6px;
+    background: var(--panel-tex) padding-box, var(--metal-diag) border-box;
+    box-shadow: 0 0 0 1px #070403, 0 14px 40px #000;
+  }
+  .modal h2 { border-bottom: 1px solid rgba(205,170,100,.4); padding-bottom: 6px; }
+  .openGame { border-bottom-color: rgba(205,170,100,.25); }
+
+  /* Game screen pieces */
+  #table { box-shadow: inset 0 0 0 2px #070403, inset 0 0 0 4px rgba(205,170,100,.28), inset 0 0 40px rgba(0,0,0,.6); }
+  #status {
+    font-family: var(--display); font-size: 13px; letter-spacing: .5px; border-radius: 3px;
+    background: linear-gradient(#1e140b, #0e0805) padding-box, var(--metal) border-box; border: 2px solid transparent;
+    box-shadow: 0 3px 6px rgba(0,0,0,.6);
+    clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
+  }
+  #tray {
+    border: 4px solid transparent; border-radius: 6px;
+    background: radial-gradient(ellipse at center, #2a190b, #0e0804) padding-box, var(--metal-diag) border-box;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,.9), 0 3px 6px rgba(0,0,0,.6);
+  }
+  #rollBtn { padding: 0 12px; white-space: nowrap; font-size: 14px; }
+  #tray::before { font-family: var(--display); font-variant: small-caps; letter-spacing: 1.5px; color: #d9c48f; }
+  #foldTab {
+    border: 2px solid transparent; border-right: none;
+    background: linear-gradient(90deg, #3e2c1b, #1a1008) padding-box, var(--metal) border-box;
+    font-family: var(--display); color: #f0dca8;
+  }
+  #celebrate .big { font-family: var(--display); }
+  #raidWarning { font-family: var(--display); letter-spacing: 1px; }
+  /* Start screen title: "Big M's Lucker" on a smaller line above "Yatzy" */
+  .logo { line-height: 1; }
+  .logo .logoTop { display: block; font-size: .42em; letter-spacing: 2px; margin-bottom: 4px; }
+
+  /* =====================================================================
+     REALISM PASS: material textures instead of flat vector look.
+     Procedural textures (SVG noise) stand in for the real bitmap art:
+     wood grain, leather/grain noise, brushed metal, felt, paper fibres.
+     ===================================================================== */
+  :root {
+    --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005 0.16' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.09 0 0 0 0 0.045 0 0 0 0 0.015 1.7 0 0 0 -0.6'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23f)'/%3E%3C/svg%3E");
+    --tex-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.7 0 0 0 -0.25'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    --tex-brushed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.002 0.7' numOctaves='2' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.95 0 0 0 0 0.85 0.8 0 0 0 -0.32'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23b)'/%3E%3C/svg%3E");
+    --tex-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.33 0 0 0 0 0.18 0.5 0 0 0 -0.18'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23p)'/%3E%3C/svg%3E");
+    --gold: linear-gradient(135deg, #fff1b8 0%, #e0b44c 22%, #8a6418 48%, #f0cf6e 70%, #7a5512 100%);
+    --leather: var(--tex-noise), radial-gradient(ellipse at 50% 30%, #3b2716, #1c120a 75%);
+    --stitch: 1px dashed rgba(225,195,145,.32);
+  }
+
+  /* Window: brushed, bevelled metal band */
+  #win {
+    border-width: 6px;
+    background: linear-gradient(var(--wood-dark), var(--wood-dark)) padding-box, var(--tex-brushed) border-box, var(--metal-diag) border-box;
+    box-shadow: 0 0 0 1px #070403, inset 0 0 0 1px #070403, inset 0 1px 0 2px rgba(255,235,190,.08), 0 18px 50px rgba(0,0,0,.8);
+  }
+  /* Corner fittings: brushed metal plates with a shaded rivet */
+  .orn {
+    width: 32px; height: 32px; filter: none;
+    background:
+      radial-gradient(circle at 7px 7px, #fff0c4 0 1px, #c4a46c 1.6px, #6a5232 3.2px, #2a1d10 4.2px, transparent 4.8px),
+      var(--tex-brushed), var(--metal-diag);
+    clip-path: polygon(0 0, 100% 0, 100% 11px, 11px 11px, 11px 100%, 0 100%);
+  }
+  .orn.tl { top: -6px; left: -6px; } .orn.tr { top: -6px; right: -6px; }
+  .orn.bl { bottom: -6px; left: -6px; } .orn.br { bottom: -6px; right: -6px; }
+
+  /* Title bar: dark leather strip with stitching */
+  .titlebar { background: var(--leather); border-bottom: 2px solid #070403; box-shadow: inset 0 -1px 0 rgba(205,170,100,.25); }
+  .titlebar::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 4px; border-bottom: var(--stitch); pointer-events: none; }
+  .titlebar .title { background: var(--tex-brushed), var(--metal); }
+  .titlebar .title::before { background: var(--tex-noise), linear-gradient(rgba(255,215,190,.22), transparent 50%), var(--ruby); }
+  .titlebar .title { text-shadow: 0 -1px 0 rgba(0,0,0,.8), 0 1px 0 rgba(255,190,150,.25); }
+
+  .iconbtn {
+    background: radial-gradient(circle at 50% 30%, rgba(255,230,190,.12), transparent 60%) padding-box, var(--leather) padding-box, var(--tex-brushed) border-box, var(--metal) border-box;
+    box-shadow: inset 0 -2px 3px rgba(0,0,0,.5), 0 2px 3px rgba(0,0,0,.6);
+  }
+
+  /* Buttons: lacquered red with gloss, brushed metal rim, engraved text */
+  .btn {
+    border-width: 3px;
+    background:
+      linear-gradient(rgba(255,215,195,.22), rgba(255,255,255,0) 48%) padding-box,
+      var(--tex-noise) padding-box, var(--ruby) padding-box,
+      var(--tex-brushed) border-box, var(--metal) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,210,180,.3), inset 0 -3px 5px rgba(0,0,0,.4), 0 0 0 1px #0a0604, 0 3px 6px rgba(0,0,0,.6);
+    color: #f5e3b6; text-shadow: 0 -1px 0 rgba(0,0,0,.75), 0 1px 0 rgba(255,190,150,.2);
+  }
+  .btn:active:not(:disabled) { box-shadow: inset 0 3px 6px rgba(0,0,0,.55), 0 0 0 1px #0a0604, 0 1px 2px rgba(0,0,0,.6); }
+  .btn.secondary {
+    background:
+      linear-gradient(rgba(255,230,200,.12), rgba(255,255,255,0) 48%) padding-box,
+      var(--leather) padding-box,
+      var(--tex-brushed) border-box, var(--metal) border-box;
+  }
+
+  /* Panels: dark leather */
+  #startScreen { background: var(--tex-noise), radial-gradient(ellipse at 25% 20%, #3e2a17, #160e07 70%); }
+  #sideMenu { background: var(--leather) padding-box, var(--tex-brushed) border-box, var(--metal) border-box; }
+  .gameRow { background: var(--tex-noise), linear-gradient(#25190e, #150d07); outline: var(--stitch); outline-offset: -4px; }
+  .modal { background: var(--leather) padding-box, var(--tex-brushed) border-box, var(--metal-diag) border-box; }
+
+  /* Table: real wood grain, darkened edges */
+  #table {
+    background:
+      radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.6) 100%),
+      var(--tex-grain),
+      linear-gradient(#5e3c20, #3f2614);
+    background-size: auto, 700px 420px, auto;
+  }
+  /* Status: leather strip with stitching */
+  #status {
+    clip-path: none; border-radius: 4px;
+    background: var(--leather) padding-box, var(--tex-brushed) border-box, var(--metal) border-box;
+    outline: var(--stitch); outline-offset: -5px;
+  }
+  /* Tray: brushed metal rim with red felt lining */
+  #tray {
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,.55) 100%) padding-box,
+      var(--tex-noise) padding-box, linear-gradient(#4a1712, #26090a) padding-box,
+      var(--tex-brushed) border-box, var(--metal-diag) border-box;
+    box-shadow: inset 0 5px 12px rgba(0,0,0,.85), 0 3px 6px rgba(0,0,0,.6);
+  }
+  #foldTab { background: var(--leather) padding-box, var(--tex-brushed) border-box, var(--metal) border-box; outline: var(--stitch); outline-offset: -4px; }
+  #sheet { background: var(--tex-noise), linear-gradient(90deg, #24180d, #3a2816); }
+  /* Paper: fibres, slightly darker worn edges */
+  .paper {
+    background:
+      radial-gradient(ellipse at center, transparent 55%, rgba(120,80,30,.22) 100%),
+      var(--tex-paper),
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,.35), transparent 40%),
+      var(--paper);
+  }
+
+  /* ----- Dice: carved wood, gold rim, inlaid gold pips ----- */
+  .die .face {
+    padding: 8px; border: 3px solid transparent; border-radius: 13px;
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255,235,200,.32), transparent 55%) padding-box,
+      radial-gradient(circle at 72% 85%, rgba(0,0,0,.28), transparent 60%) padding-box,
+      var(--tex-grain) padding-box,
+      linear-gradient(135deg, #c99258, #9c6436 55%, #7a4620) padding-box,
+      var(--gold) border-box;
+    background-size: auto, auto, 260px 180px, auto, auto;
+    background-position: 0 0, 0 0, var(--gx, 0) var(--gy, 0), 0 0, 0 0;
+    box-shadow: inset 0 0 0 1px rgba(60,35,10,.55), inset 0 -3px 5px rgba(0,0,0,.35), 0 0 0 1px #2a1806;
+  }
+  .pip {
+    width: 13px; height: 13px;
+    background: radial-gradient(circle at 38% 32%, #fff4c4 0 10%, #f0c95a 30%, #b58a2a 62%, #6a4a10 100%);
+    box-shadow: inset 0 1px 1.5px rgba(0,0,0,.55), 0 1px 0 rgba(255,225,170,.25), 0 0 0 1px rgba(60,35,5,.45);
+  }
+  .die.saved .face { box-shadow: inset 0 0 0 1px rgba(60,35,10,.55), inset 0 -3px 5px rgba(0,0,0,.35), 0 0 0 2px #ffe08a, 0 0 14px 4px rgba(255,205,90,.6); }
+  .die .shadow { border-radius: 14px; }
+
+  /* =====================================================================
+     PHOTO TEXTURE PASS: real CC0 photo textures from Poly Haven
+     (see textures/CREDITS.md). Overrides the generated textures above.
+     ===================================================================== */
+  :root {
+    /* Metal = photo of worn metal plate, with a semi-transparent bronze bevel on top */
+    --metal: url("textures/metal_plate_02_diff_1k.jpg");
+    --metal-diag: url("textures/metal_plate_02_diff_1k.jpg");
+    --tex-brushed: linear-gradient(180deg, rgba(240,205,145,.78) 0%, rgba(165,122,64,.66) 30%, rgba(88,60,28,.72) 66%, rgba(205,162,95,.7) 100%);
+    /* One image layer; it is darkened with an inner shadow (stays inside the metal border) */
+    --leather: url("textures/brown_leather_albedo_1k.jpg");
+    --leather-dark: inset 0 0 0 999px rgba(16,9,4,.52), inset 0 0 26px rgba(0,0,0,.65);
+  }
+  .titlebar { background-size: 300px; box-shadow: var(--leather-dark), inset 0 -1px 0 rgba(205,170,100,.25); }
+  .iconbtn { background-size: auto, 300px, auto, auto; box-shadow: var(--leather-dark), 0 2px 3px rgba(0,0,0,.6); }
+  .btn.secondary { background-size: auto, 300px, auto, auto; box-shadow: var(--leather-dark), 0 0 0 1px #0a0604, 0 3px 6px rgba(0,0,0,.6); }
+  #status, #foldTab { background-size: 300px, auto, auto; box-shadow: var(--leather-dark), 0 3px 6px rgba(0,0,0,.6); }
+  .modal { background-size: 360px, auto, auto; box-shadow: var(--leather-dark), 0 0 0 1px #070403, 0 14px 40px #000; }
+  #sideMenu { background-size: 360px, auto, auto; box-shadow: var(--leather-dark), 6px 0 18px rgba(0,0,0,.6); }
+
+  #table {
+    background:
+      radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.65) 100%),
+      linear-gradient(rgba(25,12,4,.35), rgba(25,12,4,.35)),
+      url("textures/wood_table_worn_diff_1k.jpg");
+    background-size: auto, auto, 520px;
+  }
+  #startScreen { background: radial-gradient(ellipse at 25% 20%, rgba(0,0,0,.25), rgba(0,0,0,.72) 75%), var(--leather); background-size: auto, 420px; }
+  .gameRow {
+    background: linear-gradient(rgba(12,7,3,.62), rgba(12,7,3,.72)), url("textures/brown_leather_albedo_1k.jpg");
+    background-size: auto, 300px;
+  }
+  #sheet { background: linear-gradient(90deg, rgba(10,6,3,.55), rgba(10,6,3,.3)), url("textures/wood_table_worn_diff_1k.jpg"); background-size: auto, 520px; }
+  #tray {
+    background:
+      radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.6) 100%) padding-box,
+      linear-gradient(rgba(45,4,2,.62), rgba(22,2,1,.72)) padding-box,
+      url("textures/velour_velvet_diff_1k.jpg") padding-box,
+      var(--tex-brushed) border-box, var(--metal-diag) border-box;
+    background-size: auto, auto, 260px, auto, auto;
+  }
+  .btn {
+    background:
+      linear-gradient(rgba(255,215,195,.2), rgba(255,255,255,0) 48%) padding-box,
+      linear-gradient(rgba(150,20,10,.62), rgba(95,10,5,.72)) padding-box,
+      url("textures/brown_leather_albedo_1k.jpg") padding-box,
+      var(--tex-brushed) border-box, var(--metal) border-box;
+    background-size: auto, auto, 300px, auto, auto;
+  }
+  .titlebar .title::before {
+    background: linear-gradient(rgba(255,215,190,.2), transparent 50%), linear-gradient(rgba(150,20,10,.65), rgba(95,10,5,.75)), url("textures/brown_leather_albedo_1k.jpg");
+    background-size: auto, auto, 260px;
+  }
+
+  /* Dice: photo wood (dark reddish grain), gold rim, gold pips */
+  .die .face {
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255,230,190,.3), transparent 55%) padding-box,
+      radial-gradient(circle at 72% 85%, rgba(0,0,0,.3), transparent 60%) padding-box,
+      url("textures/dark_wood_diff_1k.jpg") padding-box,
+      var(--gold) border-box;
+    background-size: auto, auto, 240px, auto;
+    background-position: 0 0, 0 0, var(--gx, 0) var(--gy, 0), 0 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="minimap"><button id="mmButton" title="Yatzy">⚄</button></div>
+
+<div id="win">
+  <div class="titlebar" id="titlebar">
+    <button class="iconbtn" id="menuBtn" title="Games menu">≡</button>
+    <div class="title">YATZY</div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="muteBtn" title="Sound on/off">🔊</button>
+    <button class="iconbtn" id="closeBtn" title="Close">✕</button>
+  </div>
+
+  <div class="body" id="body">
+    <!-- Start screen -->
+    <div class="screen" id="startScreen">
+      <div class="startLeft">
+        <div class="logo"><span class="logoTop">Big M's Lucker</span>Yatzy</div>
+        <button class="btn" id="createBtn">Create game</button>
+        <button class="btn secondary" id="joinBtn">Join game</button>
+      </div>
+      <div class="startRight">
+        <h3>Active games</h3>
+        <div class="gameList" id="startList"></div>
+      </div>
+    </div>
+
+    <!-- Game screen -->
+    <div class="screen hidden sheetOpen" id="gameScreen">
+      <div id="table">
+        <div id="status"></div>
+        <div id="tray"></div>
+        <button class="btn" id="rollBtn">Roll dice</button>
+        <div id="gameOver" class="hidden"></div>
+      </div>
+      <div id="dice"></div>
+      <div id="sheet">
+        <button id="foldTab" title="Fold score sheet in/out"><span id="foldArrow">▶</span><span class="vert">SCORES</span></button>
+        <div class="paper" id="paper"></div>
+      </div>
+      <div id="celebrate"><div class="rays"></div><div class="inner"><div class="big">YATZY!</div><div class="sub" id="celebrateSub"></div></div></div>
+    </div>
+
+    <!-- Side menu -->
+    <div id="menuBackdrop"></div>
+    <div id="sideMenu">
+      <div class="menuHeader"><span>Games</span><button class="iconbtn" id="menuMuteBtn" title="Sound on/off">🔊</button></div>
+      <button class="btn" id="menuCreateBtn">+ Create game</button>
+      <div class="gameList" id="menuList"></div>
+      <button class="linkBtn" id="homeBtn">⌂ Back to start screen</button>
+    </div>
+
+    <div id="modalRoot"></div>
+  </div>
+  <div class="orn tl"></div><div class="orn tr"></div><div class="orn bl"></div><div class="orn br"></div>
+  <div class="rz l"></div><div class="rz r"></div><div class="rz b"></div><div class="rz bl"></div><div class="rz br" title="Drag to resize"></div>
+</div>
+
+<div id="raidWarning"></div>
+
+<div id="devbar">
+  <b>Prototype controls</b>
+  <label><input type="checkbox" id="forceYatzy"> Next roll of mine is a Yatzy</label>
+  <label>Roll speed <input type="range" id="rollSpeed" min="400" max="2200" step="100" value="1000"> <span id="rollSpeedVal">1.0 s</span></label>
+  <div class="presets">Window size:
+    <button data-size="460x340">Small corner</button><button data-size="780x460">Normal</button><button data-size="1150x680">Large</button>
+  </div>
+  <div><button id="resetBtn">Reset prototype</button></div>
+  <div style="color:#999">Drag the window's edges or corners to resize. Placeholder art; other players are simulated.</div>
+</div>
+
+<script>
+"use strict";
+
+// ===================== Constants =====================
+const MIN_W = 460, MIN_H = 340;          // smallest window size; below the game's own minimum the window body scrolls
+const SHEET_W = 290;
+const TRAY_W = 262, TRAY_H = 70, TRAY_MARGIN = 12;
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+
+const CATS = [
+  { id: "ones", name: "Ones", upper: 1 }, { id: "twos", name: "Twos", upper: 2 }, { id: "threes", name: "Threes", upper: 3 },
+  { id: "fours", name: "Fours", upper: 4 }, { id: "fives", name: "Fives", upper: 5 }, { id: "sixes", name: "Sixes", upper: 6 },
+  { id: "pair", name: "One Pair" }, { id: "twoPairs", name: "Two Pairs" }, { id: "three", name: "Three of a Kind" },
+  { id: "four", name: "Four of a Kind" }, { id: "small", name: "Small Straight" }, { id: "large", name: "Large Straight" },
+  { id: "full", name: "Full House" }, { id: "chance", name: "Chance" }, { id: "yatzy", name: "Yatzy" },
+];
+const EXPECTED = { ones: 2, twos: 5, threes: 8, fours: 11, fives: 14, sixes: 17, pair: 8, twoPairs: 14, three: 10,
+  four: 6, small: 5, large: 6, full: 10, chance: 22, yatzy: 4 };
+const ROSTER = [
+  { name: "Anna", online: true }, { name: "Bo", online: true }, { name: "Cid", online: false },
+  { name: "Dana", online: true }, { name: "Eli", online: false },
+];
+
+// ===================== Rules =====================
+const rnd = () => 1 + Math.floor(Math.random() * 6);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function counts(d) { const c = [0, 0, 0, 0, 0, 0, 0]; d.forEach(v => c[v]++); return c; }
+
+function score(cat, d) {
+  const c = counts(d), sum = d.reduce((a, b) => a + b, 0);
+  const def = CATS.find(x => x.id === cat);
+  if (def.upper) return c[def.upper] * def.upper;
+  switch (cat) {
+    case "pair":  for (let f = 6; f >= 1; f--) if (c[f] >= 2) return 2 * f; return 0;
+    case "twoPairs": { const p = []; for (let f = 6; f >= 1; f--) if (c[f] >= 2) p.push(f); return p.length >= 2 ? 2 * p[0] + 2 * p[1] : 0; }
+    case "three": for (let f = 6; f >= 1; f--) if (c[f] >= 3) return 3 * f; return 0;
+    case "four":  for (let f = 6; f >= 1; f--) if (c[f] >= 4) return 4 * f; return 0;
+    case "small": return [1, 2, 3, 4, 5].every(f => c[f] === 1) ? 15 : 0;
+    case "large": return [2, 3, 4, 5, 6].every(f => c[f] === 1) ? 20 : 0;
+    case "full":  return c.includes(3) && c.includes(2) ? sum : 0;
+    case "chance": return sum;
+    case "yatzy": return c.includes(5) ? 50 : 0;
+  }
+  return 0;
+}
+const isYatzy = d => counts(d).includes(5);
+function upperSum(sc) { return CATS.filter(c => c.upper).reduce((a, c) => a + (sc[c.id] || 0), 0); }
+function bonus(sc) { return upperSum(sc) >= 63 ? 50 : 0; }
+function total(sc) { return Object.values(sc).reduce((a, b) => a + b, 0) + bonus(sc); }
+
+// ===================== Computer opponent (simple heuristic) =====================
+function aiHold(d, sc) {
+  const c = counts(d), open = id => sc[id] === undefined;
+  let best = 0, bf = 0;
+  for (let f = 1; f <= 6; f++) if (c[f] > best || (c[f] === best && f > bf)) { best = c[f]; bf = f; }
+  if (best >= 3) return d.map(v => v === bf);
+  for (const [run, id] of [[[2, 3, 4, 5, 6], "large"], [[1, 2, 3, 4, 5], "small"]]) {
+    if (open(id) && run.filter(f => c[f] > 0).length >= 4) {
+      const used = new Set();
+      return d.map(v => { if (run.includes(v) && !used.has(v)) { used.add(v); return true; } return false; });
+    }
+  }
+  if (best === 2) {
+    const pairs = []; for (let f = 6; f >= 1; f--) if (c[f] >= 2) pairs.push(f);
+    if (pairs.length >= 2 && (open("twoPairs") || open("full"))) return d.map(v => pairs.slice(0, 2).includes(v));
+    return d.map(v => v === pairs[0]);
+  }
+  return d.map(v => v >= 5);
+}
+function aiChoose(d, sc) {
+  const c = counts(d);
+  let bestId = null, bestVal = -Infinity;
+  for (const cat of CATS) {
+    if (sc[cat.id] !== undefined) continue;
+    let v = score(cat.id, d) - EXPECTED[cat.id];
+    if (cat.upper && c[cat.upper] >= 3) v += 4;
+    if (v > bestVal) { bestVal = v; bestId = cat.id; }
+  }
+  return bestId;
+}
+function planTurn(sc) {
+  let d = [rnd(), rnd(), rnd(), rnd(), rnd()];
+  const rolls = [{ dice: [...d], savedBefore: [false, false, false, false, false] }];
+  for (let r = 2; r <= 3; r++) {
+    if (isYatzy(d) && sc.yatzy === undefined) break;
+    const saved = aiHold(d, sc);
+    if (saved.every(Boolean)) break;
+    d = d.map((v, i) => saved[i] ? v : rnd());
+    rolls.push({ dice: [...d], savedBefore: saved });
+  }
+  return { rolls, cat: aiChoose(d, sc) };
+}
+
+// ===================== State =====================
+let state, nextId = 1;
+const els = [];       // the 5 die elements
+const $ = id => document.getElementById(id);
+
+function newGame(type, players, status = "active") {
+  return {
+    id: nextId++, type, players, status,
+    scores: players.map(() => ({})),
+    turnIndex: 0, rollsUsed: 0,
+    dice: [1, 1, 1, 1, 1], saved: [false, false, false, false, false], savedOrder: [],
+    pos: [0, 1, 2, 3, 4].map(() => ({ x: 200, y: 190, r: 0 })),
+    busy: false, lastActivity: Date.now(),
+  };
+}
+const cur = g => g.turnIndex % g.players.length;
+const meIdx = g => g.players.findIndex(p => p.me);
+const isMyTurn = g => g.status === "active" && cur(g) === meIdx(g);
+const round = g => Math.min(15, Math.floor(g.turnIndex / g.players.length) + 1);
+const pname = p => p.me ? "You" : p.name;
+const isOpen = g => state.openId === g.id && !$("win").classList.contains("hidden");
+const openGame = () => state.games.find(g => g.id === state.openId);
+
+function instantTurn(g) {
+  const p = cur(g), plan = planTurn(g.scores[p]);
+  const d = plan.rolls[plan.rolls.length - 1].dice;
+  g.scores[p][plan.cat] = score(plan.cat, d);
+  g.turnIndex++;
+}
+
+function initState() {
+  nextId = 1;
+  state = { games: [], openId: null, sheetOpen: true, sheetPref: true, narrow: false, animating: false, muted: false, rollMs: +$("rollSpeed").value, flash: null };
+  const me = { name: "You", me: true };
+  const g1 = newGame("guild", [{ name: "Anna" }, { name: "Bo" }, me]);
+  for (let i = 0; i < 16; i++) instantTurn(g1);          // round 6, Bo's turn
+  const g2 = newGame("cpu", [me, { name: "Computer", ai: true }]);
+  for (let i = 0; i < 2; i++) instantTurn(g2);           // round 2, your turn
+  const g3 = newGame("guild", [{ name: "Cid" }, me]);
+  for (let i = 0; i < 30; i++) instantTurn(g3);          // finished
+  g3.status = "over";
+  state.games.push(g1, g2, g3);
+  state.games.forEach(g => { if (g.status === "active" && !isMyTurn(g)) playOther(g); });
+}
+
+// ===================== Layout (depends on whether the score sheet is open) =====================
+// Sizes come from the live window: the score sheet keeps its width, the table gets the rest.
+const gameW = () => $("gameScreen").offsetWidth;
+const tableW = () => gameW() - (state.sheetOpen && !state.narrow ? SHEET_W : 0);
+// "Narrow" = the window can't fit the minimum table (420) plus the sheet (290) side by side.
+const isNarrow = () => $("body").clientWidth < 420 + SHEET_W;
+const tableH = () => $("gameScreen").offsetHeight;
+const trayRect = () => ({ x: tableW() - TRAY_MARGIN - TRAY_W, y: tableH() - TRAY_MARGIN - TRAY_H, w: TRAY_W, h: TRAY_H });
+const area = () => ({ x0: 52, x1: tableW() - 52, y0: 86, y1: trayRect().y - 44 });
+
+// ===================== Sound (simple synth placeholders) =====================
+let actx;
+function ac() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+function tone(freq, dur, type = "sine", vol = .12, when = 0) {
+  if (state.muted) return;
+  const a = ac(), o = a.createOscillator(), gn = a.createGain(), t = a.currentTime + when;
+  o.type = type; o.frequency.value = freq;
+  gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(gn).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+}
+function clack(when, vol = .25) {
+  if (state.muted) return;
+  const a = ac(), len = Math.floor(a.sampleRate * .035), buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), gn = a.createGain();
+  f.type = "bandpass"; f.frequency.value = 1800 + Math.random() * 1500; f.Q.value = 2; gn.gain.value = vol;
+  src.buffer = buf; src.connect(f).connect(gn).connect(a.destination); src.start(a.currentTime + when);
+}
+function scribble() {   // pencil-ish scratch
+  if (state.muted) return;
+  for (let i = 0; i < 4; i++) clack(i * .06, .05);
+}
+const sfx = {
+  roll(ms) { const n = 7; for (let i = 0; i < n; i++) clack((i / n) * ms / 1000 * (0.4 + Math.random() * .6), .12 + Math.random() * .2); },
+  click() { tone(880, .05, "square", .03); },
+  save() { tone(520, .08, "triangle", .08); },
+  score() { scribble(); },
+  paper() { clack(0, .06); clack(.08, .04); },
+  turn() { tone(587, .18, "sine", .14); tone(880, .3, "sine", .12, .16); },
+  yatzy() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .35, "triangle", .12, i * .09)); tone(1047, .9, "sine", .08, .5); },
+};
+
+// ===================== Dice rendering =====================
+function buildDice() {
+  const root = $("dice");
+  for (let i = 0; i < 5; i++) {
+    const el = document.createElement("div");
+    el.className = "die";
+    el.innerHTML = `<div class="shadow"></div><div class="face">${"<div class='pip'></div>".repeat(9)}</div>`;
+    el.addEventListener("click", () => onDieClick(i));
+    // Each die shows a different part of the wood grain, so they don't look identical.
+    el.querySelector(".face").style.setProperty("--gx", `${-i * 53}px`);
+    el.querySelector(".face").style.setProperty("--gy", `${-i * 37}px`);
+    root.appendChild(el); els.push(el);
+  }
+}
+function setFace(el, v) { el.querySelectorAll(".pip").forEach((p, k) => p.classList.toggle("on", PIPS[v].includes(k))); }
+function setTransform(el, x, y, s, r, h = 0) {
+  el.style.transform = `translate(${x - 32}px, ${y - 32}px) rotate(${r}deg) scale(${s})`;
+  el.firstChild.style.transform = `translate(${4 + h * 12}px, ${5 + h * 16}px)`;
+}
+function targetPos(g, i) {
+  // "Straight" angle closest to the current one, so dice never spin a full turn when they move to the tray or row.
+  const straight = Math.round((g.pos[i].r || 0) / 360) * 360;
+  if (g.saved[i]) { const t = trayRect(), k = g.savedOrder.indexOf(i); return { x: t.x + 31 + k * 50, y: t.y + t.h / 2, s: .72, r: straight }; }
+  if (g.rollsUsed === 0) {
+    const gap = Math.min(80, (tableW() - 90) / 4);
+    return { x: tableW() / 2 + (i - 2) * gap, y: Math.max(110, (trayRect().y + 50) / 2), s: 1, r: straight };
+  }
+  return { x: g.pos[i].x, y: g.pos[i].y, s: 1, r: g.pos[i].r };
+}
+function renderDice(g) {
+  const mine = isMyTurn(g);
+  els.forEach((el, i) => {
+    const t = targetPos(g, i);
+    setTransform(el, t.x, t.y, t.s, t.r);
+    setFace(el, g.rollsUsed === 0 ? 1 + ((i * 2) % 6) : g.dice[i]);
+    el.classList.toggle("saved", g.saved[i]);
+    el.classList.toggle("idle", g.rollsUsed === 0 || g.status !== "active");
+    el.classList.toggle("locked", !mine || g.rollsUsed >= 3);
+  });
+}
+
+function freeSpot(taken) {
+  const a = area();
+  const pick = () => ({ x: a.x0 + Math.random() * (a.x1 - a.x0), y: a.y0 + Math.random() * (a.y1 - a.y0) });
+  for (let t = 0; t < 150; t++) {
+    const p = pick();
+    if (taken.every(q => Math.hypot(q.x - p.x, q.y - p.y) > 82)) return p;
+  }
+  return pick();
+}
+// When the table gets smaller (sheet unfolds, window shrinks), dice outside the table move to free spots.
+function refitDice(g) {
+  if (!g || g.rollsUsed === 0) return;
+  const a = area(), onTable = [0, 1, 2, 3, 4].filter(i => !g.saved[i]);
+  const outside = i => g.pos[i].x > a.x1 || g.pos[i].y > a.y1;
+  const keep = onTable.filter(i => !outside(i)).map(i => g.pos[i]);
+  onTable.filter(outside).forEach(i => {
+    const p = freeSpot(keep); g.pos[i] = { x: p.x, y: p.y, r: g.pos[i].r }; keep.push(g.pos[i]);
+  });
+}
+
+// Fake "3D" roll: each die flies along a curve, spins, bounces (scale + shadow) and flickers faces.
+// In WoW this becomes a flipbook sprite animation, moved and rotated the same way.
+function animateRoll(g, idx, values) {
+  return new Promise(resolve => {
+    const ends = []; idx.forEach(() => ends.push(freeSpot(ends)));
+    // Keep the exact end angle: normalizing it (e.g. 900° → 180°) made the dice visibly spin back after landing.
+    const finish = () => idx.forEach((i, k) => { g.pos[i] = { x: ends[k].x, y: ends[k].y, r: ends[k].r || 0 }; g.dice[i] = values[i]; });
+    if (!isOpen(g)) { idx.forEach((i, k) => ends[k].r = Math.random() * 360); finish(); return resolve(); }
+
+    const a = area(), dur = state.rollMs;
+    const starts = idx.map(i => targetPos(g, i));
+    const per = idx.map(() => ({
+      d: dur * (0.8 + Math.random() * 0.35),
+      spin: (Math.random() < .5 ? -1 : 1) * (360 + Math.random() * 720),
+      r0: Math.random() * 360,
+      cx: a.x0 + Math.random() * (a.x1 - a.x0), cy: a.y0 + Math.random() * (a.y1 - a.y0),
+      nextFace: 0,
+    }));
+    // Dice become fully visible as the throw starts, not after it lands.
+    idx.forEach((i, k) => { ends[k].r = per[k].r0 + per[k].spin; els[i].classList.add("rolling"); els[i].classList.remove("idle"); });
+    sfx.roll(dur);
+    const t0 = performance.now();
+    function frame(now) {
+      let done = true;
+      const show = isOpen(g);
+      idx.forEach((i, k) => {
+        const p = per[k], t = Math.min(1, (now - t0) / p.d);
+        if (t < 1) done = false;
+        const e = 1 - Math.pow(1 - t, 3), u = 1 - e;
+        const h = (1 - t) * Math.abs(Math.sin(t * Math.PI * 3));   // "height" above the table
+        const s0 = starts[k], b = ends[k];
+        const x = u * u * s0.x + 2 * u * e * p.cx + e * e * b.x;
+        const y = u * u * s0.y + 2 * u * e * p.cy + e * e * b.y;
+        if (t < .88) { if (now > p.nextFace) { setFace(els[i], rnd()); p.nextFace = now + 50 + t * 110; } }
+        else setFace(els[i], values[i]);
+        if (show) setTransform(els[i], x, y, 1 + .25 * h, p.r0 + p.spin * e, h);
+      });
+      if (!done) return requestAnimationFrame(frame);
+      finish();
+      idx.forEach(i => els[i].classList.remove("rolling"));
+      resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ===================== Turn flow =====================
+async function myRoll() {
+  const g = openGame();
+  if (!g || !isMyTurn(g) || g.rollsUsed >= 3 || state.animating) return;
+  if ($("forceYatzy").checked) {
+    $("forceYatzy").checked = false;
+    g.saved = [false, false, false, false, false]; g.savedOrder = [];
+    const f = rnd();
+    return doRoll(g, [0, 1, 2, 3, 4], [f, f, f, f, f]);
+  }
+  const idx = [0, 1, 2, 3, 4].filter(i => !g.saved[i]);
+  if (!idx.length) return;
+  return doRoll(g, idx, g.dice.map((v, i) => g.saved[i] ? v : rnd()));
+}
+async function doRoll(g, idx, values) {
+  state.animating = true; renderGame();
+  await animateRoll(g, idx, values);
+  g.rollsUsed++; g.lastActivity = Date.now();
+  state.animating = false;
+  if (isYatzy(g.dice)) celebrate(g, cur(g));
+  renderAll();
+}
+
+function onDieClick(i) {
+  const g = openGame();
+  if (!g || !isMyTurn(g) || g.rollsUsed === 0 || g.rollsUsed >= 3 || state.animating) return;
+  g.saved[i] = !g.saved[i];
+  if (g.saved[i]) g.savedOrder.push(i); else g.savedOrder = g.savedOrder.filter(x => x !== i);
+  sfx.save();
+  renderGame();
+}
+
+function commitScore(cat) {
+  const g = openGame();
+  if (!g || !isMyTurn(g) || g.rollsUsed === 0 || state.animating || state.committing) return;
+  const me = meIdx(g);
+  if (g.scores[me][cat] !== undefined) return;
+  g.scores[me][cat] = score(cat, g.dice);
+  state.flash = { gid: g.id, p: me, cat };
+  state.committing = true;
+  sfx.score();
+  renderGame();
+  setTimeout(() => {
+    state.committing = false;
+    if (state.narrow && state.sheetOpen) setSheet(false);   // narrow window: slide the sheet away again after writing
+    advanceTurn(g);
+  }, 800);
+}
+
+function advanceTurn(g) {
+  g.turnIndex++; g.rollsUsed = 0; g.lastActivity = Date.now();
+  g.saved = [false, false, false, false, false]; g.savedOrder = [];
+  if (g.turnIndex >= 15 * g.players.length) { g.status = "over"; renderAll(); return; }
+  if (isMyTurn(g)) alertMyTurn(g); else playOther(g);
+  renderAll();
+}
+
+// Other players (computer or simulated guild members) play their turn.
+// When you're watching, you see every roll live; otherwise it happens in the background.
+async function playOther(g) {
+  if (g.busy) return;
+  g.busy = true;
+  await sleep(isOpen(g) ? 900 : (g.type === "cpu" ? 1500 : 4000 + Math.random() * 5000));
+  const p = cur(g), plan = planTurn(g.scores[p]);
+  for (let k = 0; k < plan.rolls.length; k++) {
+    const r = plan.rolls[k];
+    if (k > 0) {
+      g.saved = [...r.savedBefore]; g.savedOrder = [0, 1, 2, 3, 4].filter(i => g.saved[i]);
+      if (isOpen(g)) { renderGame(); await sleep(700); }
+    }
+    const idx = [0, 1, 2, 3, 4].filter(i => !g.saved[i]);
+    if (isOpen(g)) renderGame();
+    await animateRoll(g, idx, r.dice);
+    g.rollsUsed = k + 1;
+    if (isYatzy(g.dice)) celebrate(g, p);
+    if (isOpen(g)) { renderGame(); await sleep(1000); }
+  }
+  g.scores[p][plan.cat] = score(plan.cat, g.dice);
+  state.flash = { gid: g.id, p, cat: plan.cat };
+  if (isOpen(g)) { sfx.score(); renderGame(); await sleep(1100); }
+  g.busy = false;
+  advanceTurn(g);
+}
+
+function alertMyTurn(g) {
+  const others = g.players.filter(p => !p.me).map(p => p.name).join(" & ");
+  sfx.turn();
+  raidWarning(`Your turn vs ${others}!`);
+  if ($("win").classList.contains("hidden")) $("mmButton").classList.add("flash");
+}
+function raidWarning(text) {
+  const rw = $("raidWarning");
+  rw.textContent = text; rw.classList.remove("show"); void rw.offsetWidth; rw.classList.add("show");
+}
+function celebrate(g, p) {
+  if (!isOpen(g)) { if (!g.players[p].me) raidWarning(`${g.players[p].name} rolled a YATZY!`); return; }
+  const c = $("celebrate");
+  $("celebrateSub").textContent = g.players[p].me ? "Five of a kind!" : `${g.players[p].name} rolled a Yatzy!`;
+  c.classList.remove("show"); void c.offsetWidth; c.classList.add("show");
+  els.forEach(el => { el.classList.remove("glow"); void el.offsetWidth; el.classList.add("glow"); });
+  sfx.yatzy();
+  clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove("show"), 2900);
+}
+
+// ===================== Rendering =====================
+function renderAll() { renderLists(); if (openGame() && !$("gameScreen").classList.contains("hidden")) renderGame(); }
+
+function gameMeta(g) {
+  if (g.status === "waiting") return { text: "Waiting for invite answers…", mine: false };
+  if (g.status === "over") {
+    const totals = g.players.map((p, i) => ({ p, t: total(g.scores[i]) })).sort((a, b) => b.t - a.t);
+    return { text: `Finished · ${totals[0].p.me ? "You won" : totals[0].p.name + " won"} (${totals[0].t})`, mine: false };
+  }
+  const p = g.players[cur(g)];
+  return { text: `Round ${round(g)}/15`, turn: p.me ? "Your turn" : `${p.name}'s turn`, mine: p.me };
+}
+function renderLists() {
+  const order = [...state.games].sort((a, b) => {
+    const rank = g => g.status === "over" ? 3 : g.status === "waiting" ? 2 : isMyTurn(g) ? 0 : 1;
+    return rank(a) - rank(b) || b.lastActivity - a.lastActivity;
+  });
+  const html = order.length ? order.map(g => {
+    const m = gameMeta(g);
+    const names = g.players.map(pname).join(", ");
+    return `<div class="gameRow ${g.id === state.openId ? "current" : ""}" data-id="${g.id}">
+      <div class="names">${g.type === "cpu" ? "🖥 " : ""}${names}</div>
+      <div class="meta"><span>${m.text}</span>${m.turn ? (m.mine ? `<span class="badge">Your turn</span>` : `<span>${m.turn}</span>`) : ""}</div>
+    </div>`;
+  }).join("") : `<div class="emptyNote">No games yet. Create one!</div>`;
+  $("startList").innerHTML = html; $("menuList").innerHTML = html;
+  if (!state.games.some(isMyTurn)) $("mmButton").classList.remove("flash");
+}
+
+function renderGame() {
+  const g = openGame(); if (!g) return;
+  const p = g.players[cur(g)], mine = isMyTurn(g);
+  const mustPick = mine && g.rollsUsed >= 3 && !state.committing;
+  let s;
+  if (g.status === "waiting") s = "Waiting for invite answers…";
+  else if (g.status === "over") s = "<b>Game over</b>";
+  else if (mine) {
+    if (state.committing) s = "<b>Your turn</b> · writing it down…";
+    else if (state.animating) s = "<b>Your turn</b> · rolling…";
+    else if (g.rollsUsed === 0) s = `<b>Your turn</b> · Round ${round(g)}/15 · press Roll dice`;
+    else if (g.rollsUsed < 3) s = `<b>Your turn</b> · Roll ${g.rollsUsed}/3 · save dice, or pick a field →`;
+    else s = state.sheetOpen ? "<b>Pick a field</b> to fill in or strike out →" : "<b>Pick a field</b> · open the score sheet →";
+  } else {
+    s = g.rollsUsed === 0 ? `${p.name}'s turn · Round ${round(g)}/15` : `<b>${p.name}</b> is rolling… (${g.rollsUsed}/3)`;
+  }
+  $("status").innerHTML = s;
+
+  const rb = $("rollBtn"), left = 3 - g.rollsUsed;
+  const narrow = tableW() < 460;   // shorter label when the window is narrow
+  rb.textContent = !mine ? "Roll dice" : left <= 0 ? (narrow ? "No rolls" : "No rolls left") : narrow ? `Roll (${left})` : `Roll dice (${left} left)`;
+  rb.disabled = !mine || left <= 0 || state.animating || state.committing || g.saved.every(Boolean);
+
+  $("foldTab").classList.toggle("pulse", mustPick && !state.sheetOpen);
+  renderDice(g);
+  renderSheet(g);
+
+  const go = $("gameOver");
+  if (g.status === "over" && !g.gameOverDismissed) {
+    const totals = g.players.map((pl, i) => ({ pl, t: total(g.scores[i]) })).sort((a, b) => b.t - a.t);
+    go.innerHTML = `<div class="modal"><h2>Game over</h2><ol>${totals.map(x => `<li>${pname(x.pl)} — <b>${x.t}</b></li>`).join("")}</ol>
+      <button class="btn" id="goBack">Back to games</button> <button class="btn secondary" id="goStay">Close</button></div>`;
+    go.classList.remove("hidden");
+    $("goBack").onclick = showStart;
+    $("goStay").onclick = () => { g.gameOverDismissed = true; go.classList.add("hidden"); setSheet(true); };
+  } else go.classList.add("hidden");
+}
+
+// The paper score sheet: handwritten numbers, your column marked with highlighter.
+function renderSheet(g) {
+  const me = meIdx(g), c = cur(g), canPick = isMyTurn(g) && g.rollsUsed > 0 && !state.animating && !state.committing;
+  const head = `<tr><th></th>${g.players.map((p, i) => `<th class="${p.me ? "me" : ""} ${i === c && g.status === "active" ? "active" : ""}">${pname(p)}</th>`).join("")}</tr>`;
+  const cell = (i, cat) => {
+    const v = g.scores[i][cat], meCls = i === me ? "me" : "";
+    const ink = state.flash && state.flash.gid === g.id && state.flash.p === i && state.flash.cat === cat ? "ink" : "";
+    if (v === 0) return `<td class="val strike ${meCls} ${ink}"></td>`;                 // struck-out field
+    if (v !== undefined) return `<td class="val ${meCls} ${ink}">${v}</td>`;
+    if (i === me && canPick) {
+      const pv = score(cat, g.dice);
+      return pv === 0
+        ? `<td class="me pick zero strike" data-cat="${cat}" title="Strike out this field"></td>`
+        : `<td class="me pick" data-cat="${cat}" title="Write ${pv} here"><span class="pv">${pv}</span></td>`;
+    }
+    return `<td class="${meCls}"></td>`;
+  };
+  const row = cat => `<tr><td>${cat.name}</td>${g.players.map((_, i) => cell(i, cat.id)).join("")}</tr>`;
+  const upper = CATS.filter(x => x.upper), lower = CATS.filter(x => !x.upper);
+  const meC = i => i === me ? "me" : "";
+  const sumRow = `<tr class="sum"><td>Sum (63 = bonus)</td>${g.scores.map((sc, i) => `<td class="val ${meC(i)}">${upperSum(sc) || ""}</td>`).join("")}</tr>`;
+  const bonusRow = `<tr class="sum"><td>Bonus</td>${g.scores.map((sc, i) => {
+    const done = upper.every(x => sc[x.id] !== undefined);
+    if (bonus(sc)) return `<td class="val ${meC(i)}">50</td>`;
+    return `<td class="val ${done ? "strike" : ""} ${meC(i)}"></td>`;
+  }).join("")}</tr>`;
+  const totalRow = `<tr class="total"><td>Total</td>${g.scores.map((sc, i) => `<td class="val ${meC(i)}">${total(sc) || ""}</td>`).join("")}</tr>`;
+  const paper = $("paper"), scroll = paper.scrollTop;   // keep the sheet's scroll position when redrawing
+  paper.innerHTML = `<div class="paperTitle">YATZY</div>
+    <table><thead>${head}</thead><tbody>${upper.map(row).join("")}${sumRow}${bonusRow}${lower.map(row).join("")}${totalRow}</tbody></table>`;
+  paper.scrollTop = scroll;
+  state.flash = null;
+}
+
+// ===================== Score sheet fold in/out =====================
+// byUser = the player clicked the tab. In a wide window that choice is remembered;
+// in a narrow window the sheet just slides over the table for a moment.
+function setSheet(open, byUser = false) {
+  if (byUser && !state.narrow) state.sheetPref = open;
+  state.sheetOpen = open;
+  $("gameScreen").classList.toggle("sheetOpen", open);
+  $("foldArrow").textContent = open ? "▶" : "◀";
+  refitDice(openGame());
+  if (byUser) sfx.paper();
+  if (openGame()) renderGame();
+}
+// Called when the window size changes or a game opens: fold in automatically when narrow,
+// and restore the player's own choice when there is room again.
+function updateNarrow() {
+  const narrow = isNarrow();
+  if (narrow === state.narrow) return;
+  state.narrow = narrow;
+  $("gameScreen").classList.toggle("narrow", narrow);
+  setSheet(narrow ? false : state.sheetPref);
+}
+
+// ===================== Screens, menu, modals =====================
+function showStart() {
+  state.openId = null; closeMenu();
+  $("startScreen").classList.remove("hidden"); $("gameScreen").classList.add("hidden");
+  $("menuBtn").classList.add("placeholder");
+  renderLists();
+}
+function showGame(id) {
+  state.openId = id; state.animating = false; closeMenu();
+  $("startScreen").classList.add("hidden"); $("gameScreen").classList.remove("hidden");
+  $("menuBtn").classList.remove("placeholder");
+  $("celebrate").classList.remove("show");
+  els.forEach(el => el.classList.remove("glow", "rolling"));
+  const g = openGame();
+  updateNarrow();
+  refitDice(g);
+  if (g.status === "active" && !isMyTurn(g)) playOther(g);
+  // Place the dice instantly when a game opens (no sliding in from the corner).
+  els.forEach(el => el.classList.add("rolling"));
+  renderAll();
+  requestAnimationFrame(() => requestAnimationFrame(() => els.forEach(el => el.classList.remove("rolling"))));
+}
+function openMenu() { renderLists(); $("sideMenu").classList.add("open"); $("menuBackdrop").classList.add("open"); }
+function closeMenu() { $("sideMenu").classList.remove("open"); $("menuBackdrop").classList.remove("open"); }
+
+function setMuted(m) {
+  state.muted = m;
+  $("muteBtn").textContent = $("menuMuteBtn").textContent = m ? "🔇" : "🔊";
+}
+
+function modal(html) {
+  $("modalRoot").innerHTML = `<div class="modalBack" id="modalBack"><div class="modal">${html}</div></div>`;
+  $("modalBack").addEventListener("click", e => { if (e.target.id === "modalBack") closeModal(); });
+}
+function closeModal() { $("modalRoot").innerHTML = ""; }
+
+function startCreate() {
+  closeMenu();
+  if (state.games.filter(g => g.status !== "over").length >= 10) {
+    modal(`<h2>Too many games</h2><p>You can have 10 active games.</p><div class="row"><button class="btn" id="mOk">OK</button></div>`);
+    $("mOk").onclick = closeModal; return;
+  }
+  modal(`<h2>Create game</h2><div class="choice">
+    <button class="btn" id="mCpu">🖥 Play vs Computer</button>
+    <button class="btn secondary" id="mGuild">⚔ Play vs guild members</button></div>`);
+  $("mCpu").onclick = () => {
+    closeModal();
+    const g = newGame("cpu", [{ name: "You", me: true }, { name: "Computer", ai: true }]);
+    state.games.push(g); showGame(g.id); alertMyTurn(g);
+  };
+  $("mGuild").onclick = pickGuild;
+}
+function pickGuild() {
+  modal(`<h2>Invite guild members</h2><div class="roster">${ROSTER.map(r => `<label><input type="checkbox" value="${r.name}"> ${r.name}
+      <span class="${r.online ? "online" : "offline"}">${r.online ? "● online" : "○ offline"}</span></label>`).join("")}</div>
+    <div class="hint">Pick 1–3. Offline players get the invite next time you're both online.</div>
+    <div class="row"><button class="btn secondary" id="mCancel">Cancel</button><button class="btn" id="mSend" disabled>Send invites</button></div>`);
+  const boxes = [...document.querySelectorAll(".roster input")];
+  boxes.forEach(b => b.onchange = () => {
+    const n = boxes.filter(x => x.checked).length;
+    boxes.forEach(x => x.disabled = !x.checked && n >= 3);
+    $("mSend").disabled = n === 0;
+  });
+  $("mCancel").onclick = closeModal;
+  $("mSend").onclick = () => {
+    const names = boxes.filter(x => x.checked).map(x => x.value);
+    closeModal();
+    const g = newGame("guild", [{ name: "You", me: true }, ...names.map(n => ({ name: n }))], "waiting");
+    state.games.push(g); showGame(g.id);
+    setTimeout(() => { raidWarning(`${names.join(" & ")} accepted!`); g.status = "active"; g.lastActivity = Date.now(); renderAll(); setTimeout(() => alertMyTurn(g), 900); }, 2500);
+  };
+}
+function startJoin() {
+  closeMenu();
+  modal(`<h2>Join game</h2>
+    <div class="openGame"><span>Dana's game · 1/4 players</span><button class="btn" id="mJoinDana">Join</button></div>
+    <div class="openGame"><span>Eli's game · 2/4 players</span><button class="btn" id="mJoinEli">Join</button></div>
+    <div class="hint">Open games announced by guild members. Or enter a game code:</div>
+    <div class="row"><input type="text" id="mCode" placeholder="e.g. 4KX9"><button class="btn secondary" id="mCodeBtn">Join</button></div>
+    <div class="row"><button class="btn secondary" id="mCancel">Close</button></div>`);
+  const join = players => {
+    closeModal();
+    const g = newGame("guild", players.map(n => n === "You" ? { name: "You", me: true } : { name: n }));
+    state.games.push(g); showGame(g.id);
+    raidWarning(`You joined ${players[0]}'s game`);
+  };
+  $("mJoinDana").onclick = () => join(["Dana", "You"]);
+  $("mJoinEli").onclick = () => join(["Eli", "Anna", "You"]);
+  $("mCodeBtn").onclick = () => join(["Bo", "You"]);
+  $("mCancel").onclick = closeModal;
+}
+
+// ===================== Window: move, resize, open/close =====================
+// Resizing changes the window's size only; dice, text and the score sheet keep their size.
+function setWinSize(w, h) {
+  const win = $("win");
+  win.style.width = Math.max(MIN_W, w) + "px";
+  win.style.height = Math.max(MIN_H, h) + "px";
+  onWindowResized();
+}
+function onWindowResized() {
+  const g = openGame();
+  if (!g || $("gameScreen").classList.contains("hidden")) return;
+  updateNarrow();
+  refitDice(g);
+  renderGame();
+}
+function placeWindowCentered() {
+  const w = $("win");
+  w.style.left = Math.max(10, (innerWidth - w.offsetWidth) / 2) + "px";
+  w.style.top = Math.max(10, (innerHeight - w.offsetHeight) / 2) + "px";
+}
+function toggleWindow(show) {
+  const w = $("win"), visible = !w.classList.contains("hidden");
+  show = show === undefined ? !visible : show;
+  w.classList.toggle("hidden", !show);
+  if (show) { $("mmButton").classList.remove("flash"); renderAll(); }
+  sfx.click();
+}
+(function setupWindowDragAndResize() {
+  const w = $("win"), bar = $("titlebar");
+  let mode = null, sx, sy, ox, oy, ow, oh;
+  const start = (m, el) => e => {
+    if (m === "move" && e.target.closest("button")) return;
+    mode = m; sx = e.clientX; sy = e.clientY; ox = w.offsetLeft; oy = w.offsetTop; ow = w.offsetWidth; oh = w.offsetHeight;
+    el.setPointerCapture(e.pointerId); e.stopPropagation();
+  };
+  const move = e => {
+    if (!mode) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (mode === "move") { w.style.left = ox + dx + "px"; w.style.top = oy + dy + "px"; return; }
+    let nw = ow, nh = oh, nl = ox;
+    if (mode.includes("r")) nw = ow + dx;
+    if (mode.includes("l")) { nw = Math.max(MIN_W, ow - dx); nl = ox + (ow - nw); }   // left edge: the right edge stays put
+    if (mode.includes("b")) nh = oh + dy;
+    w.style.left = nl + "px";
+    setWinSize(nw, nh);
+  };
+  const up = () => mode = null;
+  const hook = (el, m) => {
+    el.addEventListener("pointerdown", start(m, el));
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+  };
+  hook(bar, "move");
+  document.querySelectorAll(".rz").forEach(el => hook(el, el.classList[1]));   // l, r, b, bl, br
+})();
+
+// ===================== Wire up =====================
+buildDice();
+$("rollBtn").onclick = myRoll;
+$("paper").addEventListener("click", e => { const td = e.target.closest("td.pick"); if (td) commitScore(td.dataset.cat); });
+$("foldTab").onclick = () => setSheet(!state.sheetOpen, true);
+$("startList").addEventListener("click", e => { const r = e.target.closest(".gameRow"); if (r) showGame(+r.dataset.id); });
+$("menuList").addEventListener("click", e => { const r = e.target.closest(".gameRow"); if (r) showGame(+r.dataset.id); });
+$("createBtn").onclick = startCreate;
+$("menuCreateBtn").onclick = startCreate;
+$("joinBtn").onclick = startJoin;
+$("menuBtn").onclick = () => $("sideMenu").classList.contains("open") ? closeMenu() : openMenu();
+$("menuBackdrop").onclick = closeMenu;
+$("homeBtn").onclick = showStart;
+$("muteBtn").onclick = () => setMuted(!state.muted);
+$("menuMuteBtn").onclick = () => setMuted(!state.muted);
+$("closeBtn").onclick = () => toggleWindow(false);
+$("mmButton").onclick = () => toggleWindow();
+$("rollSpeed").oninput = e => { state.rollMs = +e.target.value; $("rollSpeedVal").textContent = (state.rollMs / 1000).toFixed(1) + " s"; };
+$("resetBtn").onclick = () => location.reload();
+document.querySelectorAll("#devbar [data-size]").forEach(b => b.onclick = () => {
+  const [bw, bh] = b.dataset.size.split("x").map(Number);
+  setWinSize(Math.min(bw, innerWidth - 20), Math.min(bh, innerHeight - 20));
+  const w = $("win");
+  if (bw < 780) { w.style.left = "20px"; w.style.top = (innerHeight - w.offsetHeight - 20) + "px"; }   // bottom-left corner
+  else placeWindowCentered();
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if ($("modalRoot").innerHTML) closeModal();
+  else if ($("sideMenu").classList.contains("open")) closeMenu();
+  else toggleWindow(false);
+});
+
+initState();
+setMuted(false);
+setWinSize(Math.min(780, innerWidth - 40), Math.min(460, innerHeight - 40));
+placeWindowCentered();
+showStart();
+</script>
+</body>
+</html>

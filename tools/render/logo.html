@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  The CurseForge project icon (square), made from the addon's own materials: leather, bronze,
+  red felt and our wooden dice with gold pips. Pick a variant with the hash: logo.html#felt
+  Rendered by tools/render-logo.ps1 at 256 CSS px x 2 = 512 x 512 PNG.
+-->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  :root {
+    --metal-photo: url("../../prototype/textures/metal_plate_02_diff_1k.jpg");
+    --leather-photo: url("../../prototype/textures/brown_leather_albedo_1k.jpg");
+    --wood-dice: url("../../prototype/textures/dark_wood_diff_1k.jpg");
+    --felt-photo: url("../../prototype/textures/velour_velvet_diff_1k.jpg");
+    --brushed: linear-gradient(180deg, rgba(240,205,145,.78) 0%, rgba(165,122,64,.66) 30%, rgba(88,60,28,.72) 66%, rgba(205,162,95,.7) 100%);
+    --gold: linear-gradient(135deg, #fff1b8 0%, #e0b44c 22%, #8a6418 48%, #f0cf6e 70%, #7a5512 100%);
+  }
+  .el { position: absolute; left: 0; top: 0; box-sizing: border-box; }
+  .frame {
+    left: 0; top: 0; width: 256px; height: 256px; border: 10px solid transparent; border-radius: 34px;
+    background-size: auto, auto, 300px, auto, auto;
+    box-shadow: inset 0 0 0 1px rgba(20,10,4,.9), inset 0 10px 40px rgba(0,0,0,.75), inset 0 -6px 26px rgba(0,0,0,.6);
+  }
+  .frame.leather {
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(255,205,140,.20), transparent 62%) padding-box,
+      linear-gradient(rgba(20,11,5,.45), rgba(20,11,5,.6)) padding-box,
+      var(--leather-photo) padding-box,
+      var(--brushed) border-box, var(--metal-photo) border-box;
+    background-size: auto, auto, 320px, auto, auto;
+  }
+  .frame.felt {
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(255,120,90,.16), transparent 60%) padding-box,
+      linear-gradient(rgba(70,6,3,.55), rgba(28,2,1,.75)) padding-box,
+      var(--felt-photo) padding-box,
+      var(--brushed) border-box, var(--metal-photo) border-box;
+    background-size: auto, auto, 300px, auto, auto;
+  }
+  /* thin inner bevel line just inside the metal */
+  .bevel { left: 10px; top: 10px; width: 236px; height: 236px; border-radius: 25px;
+    box-shadow: inset 0 0 0 1.5px rgba(255,225,170,.18); }
+  .die {
+    width: 64px; height: 64px; border: 3px solid transparent; border-radius: 13px;
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255,230,190,.3), transparent 55%) padding-box,
+      radial-gradient(circle at 72% 85%, rgba(0,0,0,.3), transparent 60%) padding-box,
+      var(--wood-dice) padding-box,
+      var(--gold) border-box;
+    background-size: auto, auto, 240px, auto;
+    box-shadow: inset 0 0 0 1px rgba(60,35,10,.55), inset 0 -3px 5px rgba(0,0,0,.35), 0 5px 7px rgba(0,0,0,.7);
+  }
+  .pip {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, #fff4c4 0 10%, #f0c95a 30%, #b58a2a 62%, #6a4a10 100%);
+    box-shadow: inset 0 1px 1.5px rgba(0,0,0,.55), 0 1px 0 rgba(255,225,170,.25), 0 0 0 1px rgba(60,35,5,.45);
+  }
+  .checker {
+    width: 64px; height: 64px; border-radius: 50%; border: 4px solid transparent;
+    box-shadow: 0 5px 8px rgba(0,0,0,.7), inset 0 -4px 7px rgba(0,0,0,.4);
+  }
+</style>
+</head>
+<body>
+<script>
+  const name = location.hash.slice(1) || "leather";
+  const add = (cls, css) => { const d = document.createElement("div"); d.className = "el " + cls; d.style.cssText += css; document.body.appendChild(d); return d; };
+  // Pip centres inside the die's 58 px face (64 px minus the 3 px gold rim on each side; centre 29)
+  const PIP = 10.5, LO = 15.5, MID = 29, HI = 42.5;
+  const FACES = {
+    1: [[MID, MID]], 2: [[LO, LO], [HI, HI]], 3: [[LO, LO], [MID, MID], [HI, HI]],
+    4: [[LO, LO], [HI, LO], [LO, HI], [HI, HI]], 5: [[LO, LO], [HI, LO], [MID, MID], [LO, HI], [HI, HI]],
+    6: [[LO, LO], [HI, LO], [LO, MID], [HI, MID], [LO, HI], [HI, HI]],
+  };
+  // a die whose 64 px face is scaled up; (x, y) = centre on the 256 canvas
+  const die = (x, y, size, rot, face, bg) => {
+    const s = size / 64;
+    const d = add("die", `left:${x - 32}px;top:${y - 32}px;transform:rotate(${rot}deg) scale(${s});background-position:0 0,0 0,${bg},0 0;`);
+    for (const [px, py] of FACES[face]) {
+      const p = document.createElement("div");
+      p.className = "el pip";
+      p.style.cssText = `left:${px - PIP / 2}px;top:${py - PIP / 2}px;width:${PIP}px;height:${PIP}px;`;
+      d.appendChild(p);
+    }
+  };
+  const checker = (x, y, size, red) => add("checker", `left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;
+    background: radial-gradient(circle at 50% 50%, transparent 0 ${size * .16}px, rgba(0,0,0,.35) ${size * .17}px ${size * .19}px, transparent ${size * .2}px ${size * .28}px,
+                  rgba(0,0,0,.25) ${size * .29}px ${size * .31}px, transparent ${size * .32}px) padding-box,
+                radial-gradient(circle at 32% 28%, rgba(255,255,255,.35), transparent 55%) padding-box,
+                ${red ? "radial-gradient(circle at 40% 35%, #b3271a, #5c0b05)" : "radial-gradient(circle at 40% 35%, #fbf0d6, #b89c6e)"} padding-box,
+                var(--gold) border-box;`);
+
+  if (name === "leather") {          // A: two big dice on the window's leather (the five behind)
+    add("frame leather", "");
+    add("bevel", "");
+    die(160, 108, 100, 11, 5, "-130px -90px");
+    die(98, 146, 104, -14, 3, "-60px -40px");
+  } else if (name === "felt") {      // B: two big dice on the red felt of the dice tray
+    add("frame felt", "");
+    add("bevel", "");
+    die(160, 108, 100, 11, 5, "-130px -90px");
+    die(98, 146, 104, -14, 3, "-60px -40px");
+  } else if (name === "both") {      // C: both games: a die and a backgammon checker on leather
+    add("frame leather", "");
+    add("bevel", "");
+    checker(158, 160, 104, true);
+    die(104, 108, 110, -12, 5, "-130px -90px");
+  } else if (name === "one") {       // D: one big die (a five) on felt: the boldest at tiny sizes
+    add("frame felt", "");
+    add("bevel", "");
+    die(128, 128, 136, -9, 5, "-90px -60px");
+  }
+</script>
+</body>
+</html>

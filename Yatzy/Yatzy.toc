@@ -1,0 +1,34 @@
+## Interface: 16001
+## Title: YatzyFiend
+## Notes: Yatzy & Backgammon: play with your guild, turn by turn, or against the computer.
+## Version: 0.12.1
+## IconTexture: Interface\Icons\INV_Misc_Dice_01
+## SavedVariables: YatzyDB
+## SavedVariablesPerCharacter: YatzyCharDB
+
+Core.lua
+Style.lua
+Sound.lua
+Rules.lua
+AI.lua
+BGRules.lua
+BGAI.lua
+Games.lua
+Stats.lua
+Comm.lua
+Guild.lua
+Mail.lua
+Fast.lua
+UI.lua
+StartScreen.lua
+InviteDialog.lua
+Settings.lua
+SideMenu.lua
+Board.lua
+Sheet.lua
+Play.lua
+Portrait.lua
+BGBoard.lua
+BGPlay.lua
+TurnBanner.lua
+Minimap.lua

@@ -1,0 +1,14 @@
+# Built release zips (made by tools/release.ps1, uploaded to CurseForge)
+dist/
+
+# Raw sound packs and recordings; the converted sounds live in Yatzy/Media/Sounds
+tools/sounds-src/
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Editor and OS clutter
+Thumbs.db
+desktop.ini
+.vscode/
+*.tmp

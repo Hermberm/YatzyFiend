@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Yatzy sounds</title>
+<style>
+  body { margin: 0; padding: 24px; background: #1d140c; color: #f0e6cc; font: 15px Georgia, serif; }
+  h1 { color: #f5d77a; font-weight: normal; letter-spacing: 1px; margin: 0 0 4px; }
+  p { color: #b5a684; margin: 0 0 20px; max-width: 620px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-width: 900px; }
+  button { background: linear-gradient(#3e2c1b, #1a1008); border: 2px solid #9a8158; border-radius: 5px; color: #f5e3b6;
+    padding: 12px 14px; font: inherit; text-align: left; cursor: pointer; }
+  button:hover { border-color: #f5d77a; }
+  button small { display: block; color: #b5a684; font-size: 12px; margin-top: 3px; }
+</style>
+</head>
+<body>
+<h1>Yatzy sounds</h1>
+<p>Click to listen (Normal volume; in game the default is Low). Tell Claude if one should be swapped.</p>
+<div class="grid" id="grid"></div>
+<script>
+  const sounds = [
+    ["DiceThrow1", "Roll (several dice) 1"], ["DiceThrow2", "Roll (several dice) 2"], ["DiceThrow3", "Roll (several dice) 3"],
+    ["DieThrow1", "Roll (one die) 1"], ["DieThrow2", "Roll (one die) 2"], ["DieThrow3", "Roll (one die) 3"], ["DieThrow4", "Roll (one die) 4"],
+    ["DiceGrab1", "Save a die 1"], ["DiceGrab2", "Save a die 2"],
+    ["YourTurn", "Your turn (new, softer)"], ["Invite", "Game invitation"], ["Yatzy", "YATZY! (your friend, in use)"],
+    ["yatzy-friend-first", "Alternative: first half only"], ["yatzy-friend-second", "Alternative: second half only"],
+    ["turn-drop_002", "Your turn, option: drop"], ["turn-pluck_001", "Your turn, option: pluck"],
+    ["turn-confirmation_001", "Your turn, option: soft chime"],
+  ];
+  const grid = document.getElementById("grid");
+  for (const [file, label] of sounds) {
+    const b = document.createElement("button");
+    b.innerHTML = `${label}<small>${file}.ogg</small>`;
+    b.onclick = () => new Audio(`sound-preview/${file}.ogg`).play();
+    grid.appendChild(b);
+  }
+</script>
+</body>
+</html>
